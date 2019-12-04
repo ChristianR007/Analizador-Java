@@ -1,0 +1,372 @@
+/*--------------------- 1ra Area: Codigo de Usuario ----------------------------*/
+//----------> importaciones, paquetes
+package Analizador;
+import java_cup.runtime.Symbol;
+import java.util.LinkedList;
+
+//---------------------IMPORTACION DE NODOS
+import Analizador.Nodos._variable;
+
+import Analizador.Nodos.expresion._aritmetica;
+import Analizador.Nodos.expresion._logica;
+import Analizador.Nodos.expresion._relacional;
+import Analizador.Nodos.expresion._expresion;
+import Analizador.Nodos.expresion._primitivo;
+import Analizador.Nodos.expresion._listaprimitivos;
+import Analizador.Nodos.expresion._funcionExpresion;
+
+import Analizador.Nodos.Local._return;
+import Analizador.Nodos.Local._sentencias;
+import Analizador.Nodos.Local._sentenciaIf;
+
+import Analizador.Nodos.Funcion._funcion;
+import Analizador.Nodos.Funcion._parametro;
+//---------> Codigo para el parser, variables, metodos
+parser code
+{:
+    public Nodo raiz=null;
+    public LinkedList<TError> TablaEL = new LinkedList<TError>();
+  
+    //Metodo al que se llama automaticamente ante algun error sintactico
+    public void syntax_error(Symbol s)
+    {
+        //String lexema = s.value.toString();
+        int fila = s.left+1;
+        int columna = s.right;
+
+        System.out.println("Error Sintactico Recuperado !!!");
+        System.out.println("\t\tLexema: (" + s.value + ")");
+        System.out.println("\t\tFila: " + fila);
+        System.out.println("\t\tColumna: " + columna);    
+        TError datos = new TError(s.value+"", fila, columna, "Error Sintactico", "No se esperaba lexema en las reglas gramaticales");
+        TablaEL.add(datos);    
+    }
+
+    //Metodo al que se llama en el momento en que ya no es posible una recuperacion de errores
+    public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception
+    {
+        String lexema = s.value.toString();
+        int fila = s.right+1;
+        int columna = s.left+1;        
+        System.out.println("Error Sintactico, Panic Modeeeeeee !!!");
+        System.out.println("\t\tLexema: " + lexema);
+        System.out.println("\t\tFila: " + fila);
+        System.out.println("\t\tColumna: " + columna);
+    
+    }
+:}
+
+//------> Codigo para las acciones gramaticales
+action code
+{:
+:}
+
+/*--------------------- 2da Area: Declaraciones ----------------------------*/
+//-------> declaracion de terminales
+//terminal;
+terminal String ID,IDS,numero;
+terminal String igual,mas,menos,por,div,and,or,igualigual,menor,mayor;
+terminal String punc,coma,llava,llavc,para,parc;
+terminal String _int,_double,_string,_bool,_void,_retorno,_if,_else;
+
+//-------> declaracion de no terminales
+non terminal Nodo CUERPOCOMPLETO, CUERPO, CUERPOLOCALCOMPLETO, CUERPOLOCAL;
+non terminal Nodo TIPO,VARIABLE,FUNCION;
+non terminal Nodo LISTADOPARAMETROS;
+non terminal Nodo SENTENCIAS,SENTENCIA_IF,RETURN;
+non terminal Nodo EXPRESION,FUNCIONEXPRESION,LISTAPRIMITIVOS,ARITMETICA,LOGICA,RELACIONAL,PRIMITIVO;
+
+non terminal INICIO;
+precedence left or;
+precedence left and;
+precedence left igualigual;
+precedence left menor, mayor;
+precedence left mas, menos;
+precedence left por, div;
+precedence left igual;
+start with INICIO;
+
+//------------------------------------INICIO GRAMATICA------------------------------
+
+INICIO ::= CUERPOCOMPLETO:a
+            {:
+                Nodo padre = new Nodo("INICIO","",0,0);
+                padre.AddHijo(a);                
+                parser.raiz = padre;
+            :};
+
+CUERPOCOMPLETO ::= CUERPOCOMPLETO:a CUERPO:b
+                    {:
+                        Nodo padre = new Nodo("CUERPOCOMPLETO","",0,0);
+                        padre.AddHijo(a);
+                        padre.AddHijo(b);
+                        RESULT = padre;
+                    :}
+                | CUERPO:a
+                    {:
+                        Nodo padre = new Nodo("CUERPOCOMPLETO","",0,0);
+                        padre.AddHijo(a);
+                        RESULT = padre;
+                    :};
+
+CUERPO ::= VARIABLE:a punc {:RESULT = a;:}
+         | FUNCION:a {:RESULT = a;:};
+
+FUNCION ::= _void:a ID:b para LISTADOPARAMETROS:c parc llava CUERPOLOCALCOMPLETO:d llavc
+                {:
+                    _funcion padre = new _funcion("FUNCION","",0,0);
+                    Nodo tipo = new Nodo("tipo",a,aleft,aright);
+                    Nodo id = new Nodo("id",b,bleft,bright);
+                    padre.AddHijo(tipo);
+                    padre.AddHijo(id);
+                    padre.AddHijo(c);               // 4 hijos
+                    padre.AddHijo(d);
+                    RESULT = padre;
+                :}
+          | TIPO:a ID:b para LISTADOPARAMETROS:c parc llava CUERPOLOCALCOMPLETO:d llavc
+                {:
+                    _funcion padre = new _funcion("FUNCION","",0,0);
+                    Nodo id = new Nodo("id",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(id);
+                    padre.AddHijo(c);               // 4 hijos
+                    padre.AddHijo(d);
+                    RESULT = padre;
+                :}
+          | _void:a ID:b para parc llava CUERPOLOCALCOMPLETO:d llavc
+                {:
+                    _funcion padre = new _funcion("FUNCION","",0,0);
+                    Nodo tipo = new Nodo("tipo",a,aleft,aright);
+                    Nodo id = new Nodo("id",b,bleft,bright);
+                    padre.AddHijo(tipo);
+                    padre.AddHijo(id);              // 3 hijos
+                    padre.AddHijo(d);
+                    RESULT = padre;
+                :}
+          | TIPO:a ID:b para parc llava CUERPOLOCALCOMPLETO:d llavc
+                {:
+                    _funcion padre = new _funcion("FUNCION","",0,0);
+                    Nodo id = new Nodo("id",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(id);              // 3 hijos
+                    padre.AddHijo(d);
+                    RESULT = padre;
+                :};
+
+CUERPOLOCALCOMPLETO ::= CUERPOLOCALCOMPLETO:a CUERPOLOCAL:b
+                            {:
+                                Nodo padre = new Nodo("CUERPOLOCALCOMPLETO","",0,0);
+                                padre.AddHijo(a);
+                                padre.AddHijo(b);
+                                RESULT = padre;
+                            :}
+                      | CUERPOLOCAL:a
+                            {:
+                                Nodo padre = new Nodo("CUERPOLOCALCOMPLETO","",0,0);
+                                padre.AddHijo(a);
+                                RESULT = padre;
+                            :};
+
+CUERPOLOCAL ::= VARIABLE:a punc     {:Nodo padre = new Nodo("CUERPOLOCAL","",0,0);padre.AddHijo(a);RESULT = padre;:}
+              | SENTENCIAS:a        {:Nodo padre = new Nodo("CUERPOLOCAL","",0,0);padre.AddHijo(a);RESULT = padre;:}
+              | RETURN:a punc       {:Nodo padre = new Nodo("CUERPOLOCAL","",0,0);padre.AddHijo(a);RESULT = padre;:};
+
+RETURN ::= _retorno EXPRESION:a {:_return padre = new _return("RETURN","",0,0);padre.AddHijo(a);RESULT = padre;:};
+
+SENTENCIAS ::= SENTENCIA_IF:a {:_sentencias padre = new _sentencias("SENTENCIAS","",0,0);padre.AddHijo(a);RESULT = padre;:};
+
+SENTENCIA_IF ::= _if para EXPRESION:a parc llava CUERPOLOCALCOMPLETO:b llavc
+                    {:
+                        _sentenciaIf padre = new _sentenciaIf("SENTENCIA_IF","",0,0);
+                        padre.AddHijo(a);
+                        padre.AddHijo(b);
+                        RESULT = padre;
+                    :}
+               | _if para EXPRESION:a parc llava CUERPOLOCALCOMPLETO:b llavc _else llava CUERPOLOCALCOMPLETO:c llavc
+                    {:
+                        _sentenciaIf padre = new _sentenciaIf("SENTENCIA_IF","",0,0);
+                        padre.AddHijo(a);
+                        padre.AddHijo(b);
+                        padre.AddHijo(c);
+                        RESULT = padre;
+                    :};
+
+LISTADOPARAMETROS ::= LISTADOPARAMETROS:a coma TIPO:b ID:c
+                        {:
+                            _parametro padre = new _parametro("PARAMETRO","",0,0);
+                            Nodo id = new Nodo("id",c,cleft,cright);
+                            padre.AddHijo(a);
+                            padre.AddHijo(b);
+                            padre.AddHijo(id);
+                            RESULT = padre;
+                        :}
+                    | TIPO:a ID:b
+                        {:
+                            _parametro padre = new _parametro("PARAMETRO","",0,0);
+                            Nodo id = new Nodo("id",b,bleft,bright);
+                            padre.AddHijo(a);
+                            padre.AddHijo(id);
+                            RESULT = padre;
+                        :};
+
+VARIABLE ::= TIPO:a ID:b igual EXPRESION:c
+                {:
+                    _variable padre = new _variable("VARIABLE","",0,0);
+                    Nodo id = new Nodo("id",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(id);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :}
+          | TIPO:a ID:b
+                {:
+                    _variable padre = new _variable("VARIABLE","",0,0);
+                    Nodo id = new Nodo("id",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(id);
+                    RESULT = padre;
+                :}
+          | ID:a igual EXPRESION:b
+                {:
+                    _variable padre = new _variable("VARIABLE","",0,0);
+                    Nodo id = new Nodo("id",a,aleft,aright);
+                    padre.AddHijo(id);
+                    padre.AddHijo(b);
+                    RESULT = padre;
+                :};
+
+EXPRESION ::= ARITMETICA:a {:_expresion padre = new _expresion("expresion","",0,0);padre.AddHijo(a);RESULT = padre;:}
+            | LOGICA:a {:_expresion padre = new _expresion("expresion","",0,0);padre.AddHijo(a);RESULT = padre;:}
+            | RELACIONAL:a {:_expresion padre = new _expresion("expresion","",0,0);padre.AddHijo(a);RESULT = padre;:}
+            | FUNCIONEXPRESION:a {:_expresion padre = new _expresion("expresion","",0,0);padre.AddHijo(a);RESULT = padre;:}
+            | para EXPRESION:a parc {:_expresion padre = new _expresion("expresion","",0,0);padre.AddHijo(a);RESULT = padre;:}
+            | PRIMITIVO:a {:_expresion padre = new _expresion("expresion","",0,0);padre.AddHijo(a);RESULT = padre;:};
+
+FUNCIONEXPRESION ::= ID:a para parc
+                        {:
+                            _funcionExpresion padre = new _funcionExpresion("FUNCIONEXPRESION","",0,0);
+                            Nodo id = new Nodo("id",a,aleft,aright);
+                            padre.AddHijo(id);
+                            RESULT = padre;
+                        :}
+                   | ID:a para LISTAPRIMITIVOS:b parc
+                        {:
+                            _funcionExpresion padre = new _funcionExpresion("FUNCIONEXPRESION","",0,0);
+                            Nodo id = new Nodo("id",a,aleft,aright);
+                            padre.AddHijo(id);
+                            padre.AddHijo(b);
+                            RESULT = padre;
+                        :};
+
+LISTAPRIMITIVOS ::= LISTAPRIMITIVOS:a coma EXPRESION:b
+                        {:
+                            _listaprimitivos padre = new _listaprimitivos("LISTAPRIMITIVOS","",0,0);
+                            padre.AddHijo(a);
+                            padre.AddHijo(b);
+                            RESULT = padre;
+                        :}
+                  | EXPRESION:a
+                        {:
+                            _listaprimitivos padre = new _listaprimitivos("LISTAPRIMITIVOS","",0,0);
+                            padre.AddHijo(a);
+                            RESULT = padre;
+                        :};
+
+ARITMETICA ::= EXPRESION:a mas:b EXPRESION:c
+                {:
+                    _aritmetica padre = new _aritmetica("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :}
+             | EXPRESION:a menos:b EXPRESION:c
+                {:
+                    _aritmetica padre = new _aritmetica("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :}
+             | EXPRESION:a por:b EXPRESION:c
+                {:
+                    _aritmetica padre = new _aritmetica("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :}
+             | EXPRESION:a div:b EXPRESION:c
+                {:
+                    _aritmetica padre = new _aritmetica("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :};
+
+LOGICA ::= EXPRESION:a and:b EXPRESION:c
+                {:
+                    _logica padre = new _logica("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :}
+         | EXPRESION:a or:b EXPRESION:c
+                {:
+                    _logica padre = new _logica("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :};
+
+RELACIONAL ::= EXPRESION:a igualigual:b EXPRESION:c
+                {:
+                    _relacional padre = new _relacional("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :}
+             | EXPRESION:a menor:b EXPRESION:c
+                {:
+                    _relacional padre = new _relacional("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :}
+             | EXPRESION:a mayor:b EXPRESION:c
+                {:
+                    _relacional padre = new _relacional("ARITMETICA","",0,0);
+                    Nodo signo = new Nodo("signo",b,bleft,bright);
+                    padre.AddHijo(a);
+                    padre.AddHijo(signo);
+                    padre.AddHijo(c);
+                    RESULT = padre;
+                :};
+
+PRIMITIVO ::= numero:a {:_primitivo padre = new _primitivo("primitivo","",0,0);
+                         Nodo num = new Nodo("numero",a,aleft,aright);
+                         padre.AddHijo(num);RESULT = padre;:}
+            | ID:a {:_primitivo padre = new _primitivo("primitivo","",0,0);
+                         Nodo id = new Nodo("id",a,aleft,aright);
+                         padre.AddHijo(id);RESULT = padre;:}
+            | IDS:a {:_primitivo padre = new _primitivo("primitivo","",0,0);
+                         Nodo id = new Nodo("ids",a,aleft,aright);
+                         padre.AddHijo(id);RESULT = padre;:};
+
+TIPO ::= _int:a {:Nodo tipo = new Nodo("tipo",a,aleft,aright);RESULT = tipo;:}
+       | _double:a {:Nodo tipo = new Nodo("tipo",a,aleft,aright);RESULT = tipo;:}
+       | _string:a {:Nodo tipo = new Nodo("tipo",a,aleft,aright);RESULT = tipo;:}
+       | _bool:a {:Nodo tipo = new Nodo("tipo",a,aleft,aright);RESULT = tipo;:};
